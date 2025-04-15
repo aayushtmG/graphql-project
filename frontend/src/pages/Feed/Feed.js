@@ -67,8 +67,8 @@ class Feed extends Component {
     }
     let graphqlQuery = {
       query: `
-       query{
-          posts(page: ${page}){
+       query FetchPosts($page: Int){
+          posts(page: $page){
             posts
           { _id 
            title
@@ -80,7 +80,9 @@ class Feed extends Component {
               totalPosts
           }
         } 
-      `
+      `, variables: {
+        page
+      }
     }
     fetch('http://localhost:8080/graphql', {
       method: 'POST',
@@ -117,11 +119,12 @@ class Feed extends Component {
     event.preventDefault();
     let graphqlQuery = {
       query: `
-      mutation{
-      updateStatus(status: "${this.state.status}"){
+      mutation UpdateUserStatus($userStatus: String){
+      updateStatus(status: $userStatus){
        status
       }
-      }`
+      }`,
+      variables: { userStatus: this.state.status }
     }
     fetch('http://localhost:8080/graphql', {
       method: 'POST',
@@ -179,7 +182,7 @@ class Feed extends Component {
       body: formData
     }).then(res => res.json()).then(result => {
       console.log({ result })
-      const imageUrl = result.filePath
+      const imageUrl = result.filePath || 'undefined'
       console.log(this.state.editPost)
       let graphqlQuery = {
         query: `
@@ -196,7 +199,6 @@ class Feed extends Component {
   } 
     `
       }
-      console.log(graphqlQuery, imageUrl)
       return fetch('http://localhost:8080/graphql', {
         method: 'POST',
         body: JSON.stringify(graphqlQuery),
@@ -233,18 +235,23 @@ class Feed extends Component {
         };
         this.setState(prevState => {
           let updatedPosts = [...prevState.posts]
+          let updatedTotalPosts = prevState.totalPosts
           if (prevState.editPost) {
             const postIndex = prevState.posts.findIndex(p => p._id === prevState.editPost._id)
             updatedPosts[postIndex] = post
           } else {
-            updatedPosts.pop();
+            updatedTotalPosts++;
+            if (prevState.posts.length >= 2) {
+              updatedPosts.pop();
+            }
             updatedPosts.unshift(post)
           }
           return {
             posts: updatedPosts,
             isEditing: false,
             editPost: null,
-            editLoading: false
+            editLoading: false,
+            totalPosts: updatedTotalPosts
           };
         });
       })
